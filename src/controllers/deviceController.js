@@ -1,17 +1,25 @@
 const uuid = require("uuid")
 const path = require("path")
-const { Device } = require("../db/models/models")
+const { Device, DeviceInfo } = require("../db/models/models")
 const ApiError = require("../error/ApiError")
 
 class DeviceController {
     async create(req, res, next) {
         try {
-            const { name, price, brandId, typeId, info } = req.body
+            let { name, price, brandId, typeId, info } = req.body
             const { img } = req.files
             let fileName = uuid.v4() + ".jpg"
             img.mv(path.resolve(__dirname, '..', 'static', fileName))
-            console.log(name, price, brandId)
             const device = await Device.create({ name, price, brandId, typeId, img: fileName })
+            if(info){
+                info  = JSON.parse(info)
+                info.forEach(i =>
+                    DeviceInfo.create({
+                        title:i.title,
+                        description: i.description,
+                        deviceId:device.id
+                    }))
+            }
             return res.json(device)
         } catch (error) {
             console.log(error);
@@ -62,7 +70,12 @@ class DeviceController {
 
     }
     async getOne(req, res, next) {
-        return
+        let{id} = req.params
+        const device = await Device.findOne({
+            where:{id},
+            include:[{model:DeviceInfo,as:"info"}]
+        })
+        return res.json(device)
     }
     async delete(req, res, next) {
 
